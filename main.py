@@ -27,36 +27,32 @@ def subs_desc(U, b):
         x[i] = (b[i] - suma) / U[i, i]
     return x
 
-def subs_direct(L, b):
-    n = np.shape(L)[0]
-    y = np.zeros((n, 1))
-    for i in range(n):
-        suma = 0
-        for j in range(i):
-            suma += L[i, j] * y[j]
-        y[i] = (b[i] - suma) / L[i, i]
-    return y
+def rezolva_sistem_QR(A, b):
+    # 1. Factorizare QR cu Gram-Schmidt modificat
+    A = A.astype(float)
+    m, n = A.shape
+    Q = np.zeros((m, n))
+    R = np.zeros((n, n))
 
-def factorizare_LU(A):
-    A = A.astype(float).copy()
-    n = A.shape[0]
-    L = np.eye(n)
-    U = np.zeros_like(A)
+    for j in range(n):
+        v = A[:, j].copy()
+        for i in range(j):
+            R[i, j] = np.dot(Q[:, i], A[:, j])
+            v -= R[i, j] * Q[:, i]
+        R[j, j] = np.linalg.norm(v)
+        if R[j, j] == 0:
+            raise ValueError("Coloane liniare dependent – QR eșuează.")
+        Q[:, j] = v / R[j, j]
 
-    for k in range(n):
-        for j in range(k, n):
-            U[k, j] = A[k, j] - np.dot(L[k, :k], U[:k, j])
-        for i in range(k + 1, n):
-            if U[k, k] == 0:
-                raise ValueError("Pivot zero. Factorizarea LU fără pivotare eșuează.")
-            L[i, k] = (A[i, k] - np.dot(L[i, :k], U[:k, k])) / U[k, k]
-    return L, U
+    # 2. Rezolvăm Qᵗ * b = c
+    c = Q.T @ b
 
-def rezolva_sistem_LU(A, b):
-    L, U = factorizare_LU(A)
-    y = subs_direct(L, b)
-    x = subs_desc(U, y)
-    return x
+    # 3. Rezolvăm R * x = c prin substituție descendentă
+    x = np.zeros(n)
+    for i in range(n - 1, -1, -1):
+        x[i] = (c[i].item() - np.dot(R[i, i+1:], x[i+1:])) / R[i, i].item()
+
+    return x.reshape(-1, 1)
 
 # Funcția exactă
 def u(x, y):
@@ -97,7 +93,7 @@ for j in range(N + 1):
             b_vec[idx] = f(x, y)
 
 # Rezolvăm sistemul
-U = rezolva_sistem_LU(array, b_vec)
+U = rezolva_sistem_QR(array, b_vec)
 
 # Interpolare spline pătratică 1D
 def spline_patratica_1d(X, Y):
@@ -119,8 +115,8 @@ def spline_patratica_1d(X, Y):
         A[row, 3 * (i + 1) + 1] = -1
         row += 1
     A[row, 1] = 1
-    b[row] = (Y[1] - Y[0]) / (X[1] - X[0])
-    coef = solve(A, b)
+    b[row] = (Y[1].item() - Y[0].item()) / (X[1] - X[0])
+    coef = rezolva_sistem_QR(A, b)
 
     def eval_spline(x):
         for i in range(n):
@@ -145,9 +141,9 @@ def spline_bi2d(X, Y, Z):
         row_splines.append(row_interp)
 
     def eval_bi2d(x, y):
-        z_temp = np.array([row_splines[j](x) for j in range(len(Y))])
+        z_temp = np.array([row_splines[j](x).item() for j in range(len(Y))])
         final_spline = spline_patratica_1d(Y, z_temp)
-        return final_spline(y)
+        return final_spline(y).item()
 
     return eval_bi2d
 
@@ -158,7 +154,12 @@ spline2d = spline_bi2d(x_vals, y_vals, Z_vals)
 x_dense = np.linspace(0, a, 100)
 y_dense = np.linspace(0, b, 100)
 X_dense, Y_dense = np.meshgrid(x_dense, y_dense)
-Z_dense = np.array([[spline2d(x, y) for x in x_dense] for y in y_dense])
+
+Z_dense = np.zeros_like(X_dense)
+for j in range(Y_dense.shape[0]):
+    for i in range(X_dense.shape[1]):
+        Z_dense[j, i] = spline2d(X_dense[j, i], Y_dense[j, i])
+
 
 # Funcția reală pentru comparație
 Z_true = u(X_dense, Y_dense)

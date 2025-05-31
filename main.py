@@ -4,13 +4,25 @@ from scipy.linalg import solve
 
 # === Dimensiuni domeniu dreptunghiular ===
 a = 3  # lungimea pe axa x
-b = 2  # lungimea pe axa y
+b = 2 # lungimea pe axa y
 N = 3  # număr de subîmpărțiri pe fiecare axă
 hx = a / N
 hy = b / N
 hx2 = hx ** 2
 hy2 = hy ** 2
 n = (N + 1) ** 2
+
+def este_in_GammaD(x, y):
+    return y == 0 or y == b
+
+def este_in_GammaN(x, y):
+    return x == 0 or x == a
+
+def gD(x, y):
+    return u(x, y)  # sau orice altă funcție
+
+def gN(x, y):
+    return 0.0  # flux termic normal nul (izolație)
 
 U = np.zeros((n, 1))
 array = np.zeros((n, n))
@@ -33,7 +45,7 @@ def rezolva_sistem_QR(A, b):
             raise ValueError("Coloane liniare dependent – QR eșuează.")
         Q[:, j] = v / R[j, j]
 
-    # 2. Rezolvăm Qᵗ * b = c
+    # 2. Rezolvăm Qt * b = c
     c = Q.T @ b
 
     # 3. Rezolvăm R * x = c prin substituție descendentă
@@ -55,14 +67,30 @@ def node(i, j):
 for j in range(N + 1):
     for i in range(N + 1):
         idx = node(i, j)
+        x = i * hx
+        y = j * hy
+
         if i == 0 or i == N or j == 0 or j == N:
-            array[idx, idx] = 1
+            if este_in_GammaD(x, y):
+                array[idx, idx] = 1
+                b_vec[idx] = gD(x, y)
+            elif este_in_GammaN(x, y):
+                if i == 0:
+                    array[idx, node(i, j)] = -1 / hx
+                    array[idx, node(i + 1, j)] = 1 / hx
+                    b_vec[idx] = gN(x, y)
+                elif i == N:
+                    array[idx, node(i, j)] = 1 / hx
+                    array[idx, node(i - 1, j)] = -1 / hx
+                    b_vec[idx] = gN(x, y)
         else:
             array[idx, node(i, j - 1)] = -1 / hy2
             array[idx, node(i - 1, j)] = -1 / hx2
             array[idx, idx] = 2 / hx2 + 2 / hy2
             array[idx, node(i + 1, j)] = -1 / hx2
             array[idx, node(i, j + 1)] = -1 / hy2
+            b_vec[idx] = u(x, y)
+
 
 # Funcție f(x, y)
 def f(x, y):
@@ -76,10 +104,15 @@ for j in range(N + 1):
         idx = node(i, j)
         x = i * hx
         y = j * hy
+
         if i == 0 or i == N or j == 0 or j == N:
-            b_vec[idx] = u(x, y)
+            if este_in_GammaD(x, y):
+                b_vec[idx] = gD(x, y)
+            elif este_in_GammaN(x, y):
+                b_vec[idx] = gN(x, y)
         else:
             b_vec[idx] = f(x, y)
+
 
 # Rezolvăm sistemul
 U = rezolva_sistem_QR(array, b_vec)

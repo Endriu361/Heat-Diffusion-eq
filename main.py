@@ -67,71 +67,51 @@ def k(x, y):
     return 2 + np.cos(2 * np.pi * x / 3) * np.sin(np.pi * y / 2)
 
 def f(x, y):
-    u_c = u(x, y)
-    u_x_plus = u(x + hx, y)
-    u_x_minus = u(x - hx, y)
-    u_y_plus = u(x, y + hy)
-    u_y_minus = u(x, y - hy)
+    # Derivate centrate de ordin 2
+    du_dx = (u(x + hx, y) - u(x - hx, y)) / (2 * hx)
+    du_dy = (u(x, y + hy) - u(x, y - hy)) / (2 * hy)
 
-    # Conductivități în puncte mijlocii (medie aritmetică)
-    k_x_plus = 0.5 * (k(x, y) + k(x + hx, y))
-    k_x_minus = 0.5 * (k(x, y) + k(x - hx, y))
-    k_y_plus = 0.5 * (k(x, y) + k(x, y + hy))
-    k_y_minus = 0.5 * (k(x, y) + k(x, y - hy))
+    dk_dx = (k(x + hx, y) - k(x - hx, y)) / (2 * hx)
+    dk_dy = (k(x, y + hy) - k(x, y - hy)) / (2 * hy)
 
-    div_x = (k_x_plus * (u_x_plus - u_c) - k_x_minus * (u_c - u_x_minus)) / hx2
-    div_y = (k_y_plus * (u_y_plus - u_c) - k_y_minus * (u_c - u_y_minus)) / hy2
+    d2u_dx2 = (u(x + hx, y) - 2 * u(x, y) + u(x - hx, y)) / hx**2
+    d2u_dy2 = (u(x, y + hy) - 2 * u(x, y) + u(x, y - hy)) / hy**2
 
-    dU_dt = -u_c
+    term_x = dk_dx * du_dx + k(x, y) * d2u_dx2
+    term_y = dk_dy * du_dy + k(x, y) * d2u_dy2
 
-    return dU_dt - (div_x + div_y)
+    return -(term_x + term_y)
 
 # Mapare index 2D în vector 1D
 def node(i, j):
     return i + j * (N + 1)
 
 def construieste_sistem(gD, gN, este_in_GammaD, este_in_GammaN):
-
     A = np.zeros((n, n))
     b_vec = np.zeros((n, 1))
-
     for j in range(N + 1):
         for i in range(N + 1):
             idx = node(i, j)
             x = i * hx
             y = j * hy
 
-            if i == 0 or i == N or j == 0 or j == N:
-                if este_in_GammaD(x, y):
-                    A[idx, idx] = 1
-                    b_vec[idx] = gD(x, y)
-                elif este_in_GammaN(x, y):
-                    # margine stânga (x = 0)
-                    if i == 0:
-                        k_avg = 0.5 * (k(x, y) + k(x + hx, y))
-                        A[idx, node(i, j)] = -k_avg / hx
-                        A[idx, node(i + 1, j)] = k_avg / hx
+            if este_in_GammaD(x, y):
+                A[idx, idx] = 1
+                b_vec[idx] = gD(x, y)
 
-                    # margine dreapta (x = a)
-                    elif i == N:
-                        k_avg = 0.5 * (k(x, y) + k(x - hx, y))
-                        A[idx, node(i, j)] = k_avg / hx
-                        A[idx, node(i - 1, j)] = -k_avg / hx
-
-                    # margine jos (y = 0)
-                    elif j == 0:
-                        k_avg = 0.5 * (k(x, y) + k(x, y + hy))
-                        A[idx, node(i, j)] = -k_avg / hy
-                        A[idx, node(i, j + 1)] = k_avg / hy
-
-                    # margine sus (y = b)
-                    elif j == N:
-                        k_avg = 0.5 * (k(x, y) + k(x, y - hy))
-                        A[idx, node(i, j)] = k_avg / hy
-                        A[idx, node(i, j - 1)] = -k_avg / hy
+            elif este_in_GammaN(x, y):
+                if i ==  0:
+                    k_avg = 0.5 * (k(x, y) + k(x + hx, y))
+                    A[idx, node(i, j)] = -k_avg / hx
+                    A[idx, node(i + 1, j)] = k_avg / hx
+                    b_vec[idx] = gN(x, y)
+                elif i == N:
+                    k_avg = 0.5 * (k(x, y) + k(x - hx, y))
+                    A[idx, node(i, j)] = k_avg / hx
+                    A[idx, node(i - 1, j)] = -k_avg / hx
                     b_vec[idx] = gN(x, y)
             else:
-                # Conductivitate variabilă în interior
+                # Nod interior – ecuație diferențială
                 k_c = k(x, y)
                 A[idx, node(i, j - 1)] = -k_c / hy2
                 A[idx, node(i - 1, j)] = -k_c / hx2
@@ -139,7 +119,6 @@ def construieste_sistem(gD, gN, este_in_GammaD, este_in_GammaN):
                 A[idx, node(i + 1, j)] = -k_c / hx2
                 A[idx, node(i, j + 1)] = -k_c / hy2
                 b_vec[idx] = f(x, y)
-
     return A, b_vec
 
 array, b_vec = construieste_sistem(gD, gN, este_in_GammaD, este_in_GammaN)
@@ -240,4 +219,50 @@ ax2.set_title("Funcția reală")
 ax2.set_xlabel("x"); ax2.set_ylabel("y"); ax2.set_zlabel("z")
 
 plt.tight_layout()
+plt.show()
+
+def calculeaza_eroare(N):
+    global hx, hy, hx2, hy2, n
+    hx = a / N
+    hy = b / N
+    hx2 = hx ** 2
+    hy2 = hy ** 2
+    n = (N + 1) ** 2
+    def node(i, j): return i + j * (N + 1)
+    array, b_vec = construieste_sistem(gD, gN, este_in_GammaD, este_in_GammaN)
+    U, *_ = np.linalg.lstsq(array, b_vec, rcond=None)
+    x_vals = np.linspace(0, a, N + 1)
+    y_vals = np.linspace(0, b, N + 1)
+    Z_vals = U.reshape((N + 1, N + 1))
+    spline2d = spline_bi2d(x_vals, y_vals, Z_vals)
+    x_dense = np.linspace(0, a, 100)
+    y_dense = np.linspace(0, b, 100)
+    X_dense, Y_dense = np.meshgrid(x_dense, y_dense)
+    Z_dense = np.zeros_like(X_dense)
+    for j in range(Y_dense.shape[0]):
+        for i in range(X_dense.shape[1]):
+            Z_dense[j, i] = spline2d(X_dense[j, i], Y_dense[j, i])
+    Z_exact = u(X_dense, Y_dense)
+    eroare_relativa = np.linalg.norm(Z_dense - Z_exact) / np.linalg.norm(Z_exact)
+    return hx, eroare_relativa
+
+Ns = [4, 8, 16, 32]
+Hs = []
+Erori = []
+for N_val in Ns:
+    h, err = calculeaza_eroare(N_val)
+    Hs.append(h)
+    Erori.append(err)
+    print(f"N={N_val:2d}, h={h:.4f}, eroare relativă={err:.4e}")
+
+# === Grafic log-log ===
+plt.figure(figsize=(6, 5))
+plt.loglog(Hs, Erori, 'o-', label='Eroare relativă')
+plt.xlabel("Pas de discretizare h (log)")
+plt.ylabel("Eroare relativă (log)")
+plt.title("Ordinea de convergență (log-log)")
+plt.grid(True, which='both')
+plt.legend()
+panta, _ = np.polyfit(np.log(Hs), np.log(Erori), 1)
+print(f"\nOrdin estimat de convergență: {abs(panta):.2f}")
 plt.show()

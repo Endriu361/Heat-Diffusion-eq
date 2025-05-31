@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.linalg import solve
+
 
 # === Dimensiuni domeniu dreptunghiular ===
 a = 3 # lungimea pe axa x
@@ -63,13 +63,28 @@ def rezolva_sistem_QR(A, b):
 def u(x, y):
     return np.sin(2 * np.pi * x / 3) * np.cos(np.pi * y / 2)
 
-def f(x, y):
-    return (-1 / hx2) * (u(x - hx, y) + u(x + hx, y)) + \
-           (-1 / hy2) * (u(x, y - hy) + u(x, y + hy)) + \
-           (2 / hx2 + 2 / hy2) * u(x, y)
-
 def k(x, y):
     return 2 + np.cos(2 * np.pi * x / 3) * np.sin(np.pi * y / 2)
+
+def f(x, y):
+    u_c = u(x, y)
+    u_x_plus = u(x + hx, y)
+    u_x_minus = u(x - hx, y)
+    u_y_plus = u(x, y + hy)
+    u_y_minus = u(x, y - hy)
+
+    # Conductivități în puncte mijlocii (medie aritmetică)
+    k_x_plus = 0.5 * (k(x, y) + k(x + hx, y))
+    k_x_minus = 0.5 * (k(x, y) + k(x - hx, y))
+    k_y_plus = 0.5 * (k(x, y) + k(x, y + hy))
+    k_y_minus = 0.5 * (k(x, y) + k(x, y - hy))
+
+    div_x = (k_x_plus * (u_x_plus - u_c) - k_x_minus * (u_c - u_x_minus)) / hx2
+    div_y = (k_y_plus * (u_y_plus - u_c) - k_y_minus * (u_c - u_y_minus)) / hy2
+
+    dU_dt = -u_c
+
+    return dU_dt - (div_x + div_y)
 
 # Mapare index 2D în vector 1D
 def node(i, j):

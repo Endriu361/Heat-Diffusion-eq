@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from scipy.linalg import solve
 
 # === Dimensiuni domeniu dreptunghiular ===
-a = 3  # lungimea pe axa x
+a = 3 # lungimea pe axa x
 b = 2 # lungimea pe axa y
 N = 3  # număr de subîmpărțiri pe fiecare axă
 hx = a / N
@@ -61,7 +61,7 @@ def rezolva_sistem_QR(A, b):
 
 # Funcția exactă
 def u(x, y):
-    return np.exp(-((x - 1.5)**2 + (y - 1.0)**2)) * np.cos(2 * x) * np.sin(2 * y)
+    return np.sin(2 * np.pi * x / 3) * np.cos(np.pi * y / 2)
 
 def f(x, y):
     return (-1 / hx2) * (u(x - hx, y) + u(x + hx, y)) + \
@@ -69,7 +69,7 @@ def f(x, y):
            (2 / hx2 + 2 / hy2) * u(x, y)
 
 def k(x, y):
-    return x / y # sau orice altă funcție, de ex: return 1 + 0.5 * x * y
+    return 2 + np.cos(2 * np.pi * x / 3) * np.sin(np.pi * y / 2)
 
 # Mapare index 2D în vector 1D
 def node(i, j):
@@ -173,7 +173,7 @@ def spline_patratica_1d(X, Y):
 x_vals = np.linspace(0, a, N + 1)
 y_vals = np.linspace(0, b, N + 1)
 
-Z_vals = U.reshape((N + 1, N + 1)).T
+Z_vals = U.reshape((N + 1, N + 1))
 print(Z_vals)
 
 # Interpolare 2D spline pătratic
@@ -206,6 +206,17 @@ for j in range(Y_dense.shape[0]):
 # Funcția reală pentru comparație
 Z_true = u(X_dense, Y_dense)
 
+error = np.abs(Z_dense - Z_true)
+print("Diferenta majora:", np.max(error))
+plt.figure(figsize=(6, 5))
+cp = plt.contourf(X_dense, Y_dense, error, levels=20, cmap='Reds')
+plt.colorbar(cp)
+plt.title("Eroare absolută")
+plt.xlabel("x")
+plt.ylabel("y")
+plt.grid(True)
+plt.show()
+
 # === GRAFIC Spline vs Funcție reală ===
 fig = plt.figure(figsize=(14, 6))
 
@@ -220,16 +231,4 @@ ax2.set_title("Funcția reală")
 ax2.set_xlabel("x"); ax2.set_ylabel("y"); ax2.set_zlabel("z")
 
 plt.tight_layout()
-plt.show()
-
-# === GRAFIC EROARE ===
-error = np.abs(Z_dense - Z_true)
-print("Max error:", np.max(error))
-plt.figure(figsize=(6, 5))
-cp = plt.contourf(X_dense, Y_dense, error, levels=20, cmap='Reds')
-plt.colorbar(cp)
-plt.title("Eroare absolută")
-plt.xlabel("x")
-plt.ylabel("y")
-plt.grid(True)
 plt.show()

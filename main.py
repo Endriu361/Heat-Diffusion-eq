@@ -16,17 +16,6 @@ U = np.zeros((n, 1))
 array = np.zeros((n, n))
 b_vec = np.zeros((n, 1))
 
-# Funcții auxiliare pentru LU
-def subs_desc(U, b):
-    n = np.shape(U)[1]
-    x = np.zeros((n, 1))
-    for i in range(n - 1, -1, -1):
-        suma = 0
-        for j in range(i + 1, n):
-            suma += U[i, j] * x[j]
-        x[i] = (b[i] - suma) / U[i, i]
-    return x
-
 def rezolva_sistem_QR(A, b):
     # 1. Factorizare QR cu Gram-Schmidt modificat
     A = A.astype(float)

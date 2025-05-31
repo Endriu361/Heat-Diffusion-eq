@@ -22,11 +22,15 @@ def gD(x, y):
     return u(x, y)  # sau orice altă funcție
 
 def gN(x, y):
-    return 0.0  # flux termic normal nul (izolație)
-
-U = np.zeros((n, 1))
-array = np.zeros((n, n))
-b_vec = np.zeros((n, 1))
+    k_val = k(x, y)
+    # calculul derivatelor normale, depinde de locație
+    if x == 0:
+        du_dn = (u(x + hx, y) - u(x, y)) / hx  # derivata spre interior
+    elif x == a:
+        du_dn = (u(x, y) - u(x - hx, y)) / hx
+    else:
+        raise ValueError("gN definit doar pe x=0 sau x=a")
+    return -k_val * du_dn
 
 def rezolva_sistem_QR(A, b):
     # 1. Factorizare QR cu Gram-Schmidt modificat
@@ -59,60 +63,76 @@ def rezolva_sistem_QR(A, b):
 def u(x, y):
     return np.exp(-((x - 1.5)**2 + (y - 1.0)**2)) * np.cos(2 * x) * np.sin(2 * y)
 
-# Mapare index 2D în vector 1D
-def node(i, j):
-    return i + j * (N + 1)
-
-# Umplem matricea
-for j in range(N + 1):
-    for i in range(N + 1):
-        idx = node(i, j)
-        x = i * hx
-        y = j * hy
-
-        if i == 0 or i == N or j == 0 or j == N:
-            if este_in_GammaD(x, y):
-                array[idx, idx] = 1
-                b_vec[idx] = gD(x, y)
-            elif este_in_GammaN(x, y):
-                if i == 0:
-                    array[idx, node(i, j)] = -1 / hx
-                    array[idx, node(i + 1, j)] = 1 / hx
-                    b_vec[idx] = gN(x, y)
-                elif i == N:
-                    array[idx, node(i, j)] = 1 / hx
-                    array[idx, node(i - 1, j)] = -1 / hx
-                    b_vec[idx] = gN(x, y)
-        else:
-            array[idx, node(i, j - 1)] = -1 / hy2
-            array[idx, node(i - 1, j)] = -1 / hx2
-            array[idx, idx] = 2 / hx2 + 2 / hy2
-            array[idx, node(i + 1, j)] = -1 / hx2
-            array[idx, node(i, j + 1)] = -1 / hy2
-            b_vec[idx] = u(x, y)
-
-
-# Funcție f(x, y)
 def f(x, y):
     return (-1 / hx2) * (u(x - hx, y) + u(x + hx, y)) + \
            (-1 / hy2) * (u(x, y - hy) + u(x, y + hy)) + \
            (2 / hx2 + 2 / hy2) * u(x, y)
 
-# Populăm vectorul b
-for j in range(N + 1):
-    for i in range(N + 1):
-        idx = node(i, j)
-        x = i * hx
-        y = j * hy
+def k(x, y):
+    return x / y # sau orice altă funcție, de ex: return 1 + 0.5 * x * y
 
-        if i == 0 or i == N or j == 0 or j == N:
-            if este_in_GammaD(x, y):
-                b_vec[idx] = gD(x, y)
-            elif este_in_GammaN(x, y):
-                b_vec[idx] = gN(x, y)
-        else:
-            b_vec[idx] = f(x, y)
+# Mapare index 2D în vector 1D
+def node(i, j):
+    return i + j * (N + 1)
 
+def construieste_sistem(gD, gN, este_in_GammaD, este_in_GammaN):
+    hx = a / N
+    hy = b / N
+    hx2 = hx ** 2
+    hy2 = hy ** 2
+    n = (N + 1) ** 2
+
+    A = np.zeros((n, n))
+    b_vec = np.zeros((n, 1))
+
+    for j in range(N + 1):
+        for i in range(N + 1):
+            idx = node(i, j)
+            x = i * hx
+            y = j * hy
+
+            if i == 0 or i == N or j == 0 or j == N:
+                if este_in_GammaD(x, y):
+                    A[idx, idx] = 1
+                    b_vec[idx] = gD(x, y)
+                elif este_in_GammaN(x, y):
+                    # margine stânga (x = 0)
+                    if i == 0:
+                        k_avg = 0.5 * (k(x, y) + k(x + hx, y))
+                        A[idx, node(i, j)] = -k_avg / hx
+                        A[idx, node(i + 1, j)] = k_avg / hx
+
+                    # margine dreapta (x = a)
+                    elif i == N:
+                        k_avg = 0.5 * (k(x, y) + k(x - hx, y))
+                        A[idx, node(i, j)] = k_avg / hx
+                        A[idx, node(i - 1, j)] = -k_avg / hx
+
+                    # margine jos (y = 0)
+                    elif j == 0:
+                        k_avg = 0.5 * (k(x, y) + k(x, y + hy))
+                        A[idx, node(i, j)] = -k_avg / hy
+                        A[idx, node(i, j + 1)] = k_avg / hy
+
+                    # margine sus (y = b)
+                    elif j == N:
+                        k_avg = 0.5 * (k(x, y) + k(x, y - hy))
+                        A[idx, node(i, j)] = k_avg / hy
+                        A[idx, node(i, j - 1)] = -k_avg / hy
+                    b_vec[idx] = gN(x, y)
+            else:
+                # Conductivitate variabilă în interior
+                k_c = k(x, y)
+                A[idx, node(i, j - 1)] = -k_c / hy2
+                A[idx, node(i - 1, j)] = -k_c / hx2
+                A[idx, idx] = 2 * k_c * (1 / hx2 + 1 / hy2)
+                A[idx, node(i + 1, j)] = -k_c / hx2
+                A[idx, node(i, j + 1)] = -k_c / hy2
+                b_vec[idx] = f(x, y)
+
+    return A, b_vec
+
+array, b_vec = construieste_sistem(gD, gN, este_in_GammaD, este_in_GammaN)
 
 # Rezolvăm sistemul
 U = rezolva_sistem_QR(array, b_vec)
@@ -154,6 +174,7 @@ x_vals = np.linspace(0, a, N + 1)
 y_vals = np.linspace(0, b, N + 1)
 
 Z_vals = U.reshape((N + 1, N + 1)).T
+print(Z_vals)
 
 # Interpolare 2D spline pătratic
 def spline_bi2d(X, Y, Z):
@@ -181,7 +202,6 @@ Z_dense = np.zeros_like(X_dense)
 for j in range(Y_dense.shape[0]):
     for i in range(X_dense.shape[1]):
         Z_dense[j, i] = spline2d(X_dense[j, i], Y_dense[j, i])
-
 
 # Funcția reală pentru comparație
 Z_true = u(X_dense, Y_dense)

@@ -76,11 +76,6 @@ def node(i, j):
     return i + j * (N + 1)
 
 def construieste_sistem(gD, gN, este_in_GammaD, este_in_GammaN):
-    hx = a / N
-    hy = b / N
-    hx2 = hx ** 2
-    hy2 = hy ** 2
-    n = (N + 1) ** 2
 
     A = np.zeros((n, n))
     b_vec = np.zeros((n, 1))

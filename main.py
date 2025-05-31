@@ -4,7 +4,7 @@ from scipy.linalg import solve
 
 # Date de bază
 N = 3
-h = 1
+h = 3/N
 h2 = h ** 2
 n = (N + 1) ** 2
 U = np.zeros((n, 1))  # Matricea verticala

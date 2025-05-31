@@ -128,7 +128,6 @@ def construieste_sistem(gD, gN, este_in_GammaD, este_in_GammaN):
     return A, b_vec
 
 array, b_vec = construieste_sistem(gD, gN, este_in_GammaD, este_in_GammaN)
-
 # Rezolvăm sistemul
 U = rezolva_sistem_QR(array, b_vec)
 

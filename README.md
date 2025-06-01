@@ -9,5 +9,5 @@ Acest proiect are ca scop implementarea unei soluții numerice pentru ecuația d
 
 ---
 
-: Pentru mai multe detalii teoretice și explicații: `project_report.pdf`.
+> Pentru mai multe detalii teoretice și explicații: `project_report.pdf`.
 

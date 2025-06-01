@@ -352,7 +352,7 @@ log_h = np.log(np.array(h_vals))
 log_e = np.log(np.array(max_errors))
 A = np.vstack([log_h, np.ones(len(log_h))]).T
 slope, intercept = np.linalg.lstsq(A, log_e, rcond=None)[0]
-
+dasda
 # Rezumat analiză convergență
 print("\n=== REZUMAT ANALIZĂ CONVERGENȚĂ ===")
 print(f"Rata globală de convergență: {slope:.4f}")

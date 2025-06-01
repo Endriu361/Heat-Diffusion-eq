@@ -9,7 +9,7 @@ from scipy.sparse.linalg import spsolve
 # =============================================================================
 a = 5  # Lungimea domeniului pe axa Ox
 b = 2  # Lungimea domeniului pe axa Oy
-n_vals = [4, 8, 16, 32]  # Dimensiunile grilelor pentru testare
+n_vals = [4, 8, 16, 32, 64, 128]  # Dimensiunile grilelor pentru testare
 max_errors = []  # Lista pentru erorile maxime
 h_vals = []  # Lista pentru pașii de discretizare
 
@@ -285,7 +285,7 @@ def plot_solutions(X, Y, Z_num, Z_exact, N_val):
 # =============================================================================
 
 for N_val in n_vals:
-    print(f"\n=== Solving for N = {N_val} ===")
+    print(f"\n=== Rezolvare pentru N = {N_val} ===")
     start_time = time.time()
 
     # Construire și rezolvare sistem

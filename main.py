@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 
 # === Dimensiuni domeniu dreptunghiular ===
-a = 3 # lungimea pe axa x
+a = 5 # lungimea pe axa x
 b = 2 # lungimea pe axa y
 N = 3  # număr de subîmpărțiri pe fiecare axă
 hx = a / N
@@ -194,17 +194,6 @@ for j in range(Y_dense.shape[0]):
 # Funcția reală pentru comparație
 Z_true = u(X_dense, Y_dense)
 
-error = np.abs(Z_dense - Z_true)
-print("Diferenta majora:", np.max(error))
-plt.figure(figsize=(6, 5))
-cp = plt.contourf(X_dense, Y_dense, error, levels=20, cmap='Reds')
-plt.colorbar(cp)
-plt.title("Eroare absolută")
-plt.xlabel("x")
-plt.ylabel("y")
-plt.grid(True)
-plt.show()
-
 # === GRAFIC Spline vs Funcție reală ===
 fig = plt.figure(figsize=(14, 6))
 
@@ -246,7 +235,7 @@ def calculeaza_eroare(N):
     eroare_relativa = np.linalg.norm(Z_dense - Z_exact) / np.linalg.norm(Z_exact)
     return hx, eroare_relativa
 
-Ns = [4, 8, 16, 32]
+Ns = [4, 8, 16]
 Hs = []
 Erori = []
 for N_val in Ns:

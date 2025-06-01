@@ -265,4 +265,4 @@ plt.grid(True, which='both')
 plt.legend()
 panta, _ = np.polyfit(np.log(Hs), np.log(Erori), 1)
 print(f"\nOrdin estimat de convergență: {abs(panta):.2f}")
-plt.show()
+plt.show()dsd

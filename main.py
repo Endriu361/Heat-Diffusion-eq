@@ -16,7 +16,6 @@ h_vals = []  # Lista pentru pașii de discretizare
 # =============================================================================
 # FUNCȚII EXACTE ȘI COEFICIENȚI
 # =============================================================================
-
 def u(x, y):
     """Soluția analitică a problemei"""
     return np.sin(2 * np.pi * x / 3) * np.cos(np.pi * y / 2)

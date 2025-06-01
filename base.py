@@ -255,6 +255,7 @@ for N_val in Ns:
     Erori.append(err)
     print(f"N={N_val:2d}, h={h:.4f}, eroare relativă={err:.4e}")
 
+
 # === Grafic log-log ===
 plt.figure(figsize=(6, 5))
 plt.loglog(Hs, Erori, 'o-', label='Eroare relativă')

@@ -1,1 +1,1 @@
-Proiect – Rezolvarea numerică a ecuatiei de difuzie a căldurii - Python
+## Proiect – Rezolvarea numerică a ecuatiei de difuzie a căldurii - Python

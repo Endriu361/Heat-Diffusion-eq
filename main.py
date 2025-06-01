@@ -285,7 +285,7 @@ def plot_solutions(X, Y, Z_num, Z_exact, N_val):
 
     # Adăugare bară de culoare
     fig.colorbar(surf, ax=ax3, shrink=0.5, aspect=5)
-    fig.tight_layout(rect=[0, 0, 1, 0.95])  # Lasă loc pentru titluri
+    fig.tight_layout(rect=(0., 0., 1., 0.95))  # Lasă loc pentru titluri
     plt.show()
 
     return max_error

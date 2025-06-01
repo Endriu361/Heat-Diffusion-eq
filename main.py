@@ -2,15 +2,49 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.sparse import csr_matrix, lil_matrix
 import time
+from scipy.sparse.linalg import spsolve
 
 # =============================================================================
 # PARAMETRII DE BAZĂ AI DOMENIULUI
 # =============================================================================
 a = 5  # Lungimea domeniului pe axa Ox
 b = 2  # Lungimea domeniului pe axa Oy
-n_vals = [4, 8, 12, 16]  # Dimensiunile grilelor pentru testare
+n_vals = [4, 8, 16, 32]  # Dimensiunile grilelor pentru testare
 max_errors = []  # Lista pentru erorile maxime
 h_vals = []  # Lista pentru pașii de discretizare
+
+# =============================================================================
+# FUNCȚII EXACTE ȘI COEFICIENȚI
+# =============================================================================
+
+def u(x, y):
+    """Soluția analitică a problemei"""
+    return np.sin(2 * np.pi * x / 3) * np.cos(np.pi * y / 2)
+
+
+def k(x, y):
+    """Coeficientul de difuzie al ecuației"""
+    return 1 + 0.5 * np.sin(2 * np.pi * x) * np.exp(-y)
+
+
+def f(x, y, hx, hy):
+    """Termenul sursă calculat cu diferențe finite"""
+    # Calcul derivate parțiale de ordinul 1
+    du_dx = (u(x + hx, y) - u(x - hx, y)) / (2 * hx)
+    du_dy = (u(x, y + hy) - u(x, y - hy)) / (2 * hy)
+
+    dk_dx = (k(x + hx, y) - k(x - hx, y)) / (2 * hx)
+    dk_dy = (k(x, y + hy) - k(x, y - hy)) / (2 * hy)
+
+    # Calcul derivate parțiale de ordinul 2
+    d2u_dx2 = (u(x + hx, y) - 2 * u(x, y) + u(x - hx, y)) / hx ** 2
+    d2u_dy2 = (u(x, y + hy) - 2 * u(x, y) + u(x, y - hy)) / hy ** 2
+
+    # Calcul termen sursă
+    term_x = dk_dx * du_dx + k(x, y) * d2u_dx2
+    term_y = dk_dy * du_dy + k(x, y) * d2u_dy2
+
+    return -(term_x + term_y)
 
 
 # =============================================================================
@@ -77,41 +111,6 @@ def rezolva_sistem_QR(A, b):
         x[i] = (c[i].item() - np.dot(R[i, i + 1:], x[i + 1:])) / R[i, i].item()
 
     return x.reshape(-1, 1)
-
-
-# =============================================================================
-# FUNCȚII EXACTE ȘI COEFICIENȚI
-# =============================================================================
-
-def u(x, y):
-    """Soluția analitică a problemei"""
-    return np.sin(2 * np.pi * x / 3) * np.cos(np.pi * y / 2)
-
-
-def k(x, y):
-    """Coeficientul de difuzie al ecuației"""
-    return 1 + 0.5 * np.sin(2 * np.pi * x) * np.exp(-y)
-
-
-def f(x, y, hx, hy):
-    """Termenul sursă calculat cu diferențe finite"""
-    # Calcul derivate parțiale de ordinul 1
-    du_dx = (u(x + hx, y) - u(x - hx, y)) / (2 * hx)
-    du_dy = (u(x, y + hy) - u(x, y - hy)) / (2 * hy)
-
-    dk_dx = (k(x + hx, y) - k(x - hx, y)) / (2 * hx)
-    dk_dy = (k(x, y + hy) - k(x, y - hy)) / (2 * hy)
-
-    # Calcul derivate parțiale de ordinul 2
-    d2u_dx2 = (u(x + hx, y) - 2 * u(x, y) + u(x - hx, y)) / hx ** 2
-    d2u_dy2 = (u(x, y + hy) - 2 * u(x, y) + u(x, y - hy)) / hy ** 2
-
-    # Calcul termen sursă
-    term_x = dk_dx * du_dx + k(x, y) * d2u_dx2
-    term_y = dk_dy * du_dy + k(x, y) * d2u_dy2
-
-    return -(term_x + term_y)
-
 
 # =============================================================================
 # CONSTRUIREA SISTEMULUI MATRICIAL (FORMAT RAR)
@@ -228,17 +227,7 @@ def spline_bi2d(X, Y, Z):
     """Construiește un spline pătratic bidimensional"""
     # Spline-uri de-a lungul fiecărui rând
     row_splines = [spline_patratica_1d(X, Z[j, :]) for j in range(len(Y))]
-
-    def eval_bi2d(x, y):
-        """Evaluare spline 2D în punctul (x,y)"""
-        # Interpolare pe direcția x
-        z_vals = np.array([spline(x) for spline in row_splines])
-        # Interpolare pe direcția y
-        col_spline = spline_patratica_1d(Y, z_vals)
-        return col_spline(y)
-
-    return eval_bi2d
-
+    return row_splines
 
 # =============================================================================
 # VIZUALIZARE REZULTATE
@@ -296,31 +285,44 @@ def plot_solutions(X, Y, Z_num, Z_exact, N_val):
 # =============================================================================
 
 for N_val in n_vals:
-    print(f"\n=== Rezolvare pentru N = {N_val} ===")
+    print(f"\n=== Solving for N = {N_val} ===")
     start_time = time.time()
 
     # Construire și rezolvare sistem
     A_sparse, b_vec = construieste_sistem_sparse(N_val)
-    U = rezolva_sistem_QR(A_sparse.toarray(), b_vec)
+    U = spsolve(A_sparse, b_vec)
 
     # Pregătire grilă
     x_vals = np.linspace(0, a, N_val + 1)
     y_vals = np.linspace(0, b, N_val + 1)
-    X, Y = np.meshgrid(x_vals, y_vals)
     Z_vals = U.reshape((N_val + 1, N_val + 1))
 
     # Construire interpolant spline
-    spline2d = spline_bi2d(x_vals, y_vals, Z_vals)
+    row_splines = spline_bi2d(x_vals, y_vals, Z_vals)
+
+    # Evaluare pe grilă fină bazată pe dimensiunea problemei
+    if N_val <= 64:
+        num_dense = 50
+    elif N_val <= 128:
+        num_dense = 30
+    else:
+        num_dense = 20
 
     # Evaluare pe grilă densă
-    x_dense = np.linspace(0, a, 100)
-    y_dense = np.linspace(0, b, 100)
+    x_dense = np.linspace(0, a, num_dense)
+    y_dense = np.linspace(0, b, num_dense)
     X_dense, Y_dense = np.meshgrid(x_dense, y_dense)
 
-    Z_dense = np.zeros_like(X_dense)
-    for j in range(len(y_dense)):
-        for i in range(len(x_dense)):
-            Z_dense[j, i] = spline2d(X_dense[j, i], Y_dense[j, i])
+    # Evaluare spline pe grilă densă
+    Z_row = np.zeros((len(y_vals), len(x_dense)))
+    for j, spl in enumerate(row_splines):
+        Z_row[j, :] = np.array([spl(x) for x in x_dense])
+
+    # Interpolare coloană cu spline pătratic
+    Z_dense = np.zeros((len(y_dense), len(x_dense)))
+    for i in range(len(x_dense)):
+        col_spline = spline_patratica_1d(y_vals, Z_row[:, i])
+        Z_dense[:, i] = np.array([col_spline(y) for y in y_dense])
 
     # Calcul soluție exactă
     Z_exact = u(X_dense, Y_dense)
@@ -335,37 +337,22 @@ for N_val in n_vals:
 # ANALIZA CONVERGENȚEI
 # =============================================================================
 
-# Grafic eroare vs. pas de discretizare
-plt.figure(figsize=(12, 7))
-plt.plot(h_vals, max_errors, 'bo-', linewidth=2, markersize=8, label='Eroare Maximă')
-
 # Scalare logaritmică
-plt.xscale('log')
-plt.yscale('log')
-plt.grid(True, linestyle='--', alpha=0.7)
-plt.xlabel('Pas de discretizare (h)', fontsize=12)
-plt.ylabel('Eroare Maximă Absolută', fontsize=12)
-plt.title('Analiza Rata de Convergență', fontsize=14)
+plt.figure(figsize=(10, 6))
+plt.plot(n_vals, max_errors, 'o-', linewidth=2)
+plt.xlabel('Număr de intervale (N)')
+plt.ylabel('Eroare Maximă Absolută')
+plt.title('Analiză Rată de Convergență')
+plt.grid(True, linestyle='--', linewidth=0.5)
+plt.minorticks_on()
+plt.tight_layout()
+plt.show()
 
 # Calcul rata convergență
 log_h = np.log(np.array(h_vals))
 log_e = np.log(np.array(max_errors))
 A = np.vstack([log_h, np.ones(len(log_h))]).T
 slope, intercept = np.linalg.lstsq(A, log_e, rcond=None)[0]
-
-# Linie de regresie
-regression_line = np.exp(intercept) * np.array(h_vals) ** slope
-plt.plot(h_vals, regression_line, 'r--', label=f'Regresie liniară: pantă = {slope:.4f}')
-
-# Adnotări cu rate locale de convergență
-for i in range(1, len(h_vals)):
-    local_slope = (log_e[i] - log_e[i - 1]) / (log_h[i] - log_h[i - 1])
-    plt.annotate(f'{local_slope:.2f}', (h_vals[i], max_errors[i]),
-                 xytext=(5, -10), textcoords='offset points', fontsize=9)
-
-plt.legend(fontsize=12)
-plt.tight_layout()
-plt.show()
 
 # Rezumat analiză convergență
 print("\n=== REZUMAT ANALIZĂ CONVERGENȚĂ ===")

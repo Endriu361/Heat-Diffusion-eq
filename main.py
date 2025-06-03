@@ -337,13 +337,13 @@ for N_val in n_vals:
 # =============================================================================
 
 # Scalare logaritmică
+# ANALIZA CONVERGENȚEI - GRAFIC LOG-LOG
 plt.figure(figsize=(10, 6))
-plt.plot(n_vals, max_errors, 'o-', linewidth=2)
-plt.xlabel('Număr de intervale (N)')
-plt.ylabel('Eroare Maximă Absolută')
-plt.title('Analiză Rată de Convergență')
-plt.grid(True, linestyle='--', linewidth=0.5)
-plt.minorticks_on()
+plt.loglog(h_vals, max_errors, 'o-', linewidth=2, basex=10, basey=10)
+plt.xlabel('Pas de discretizare h (log10)', fontsize=12)
+plt.ylabel('Eroare maximă (log10)', fontsize=12)
+plt.title('Grafic log-log: Rată de convergență', fontsize=14)
+plt.grid(True, which='both', linestyle='--', linewidth=0.5)
 plt.tight_layout()
 plt.show()
 
